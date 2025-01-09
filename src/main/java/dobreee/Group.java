@@ -1,7 +1,7 @@
 package dobreee;
 
 public class Group {
-    private int size; // Liczba osób w grupie
+    private  int size;
 
     public Group(int size) {
         this.size = size;
@@ -9,5 +9,9 @@ public class Group {
 
     public int getSize() {
         return size;
+    }
+    public static int getRandomGroupSize() {
+        return (int) (Math.random() * 3) + 1;
+
     }
 }
