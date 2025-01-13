@@ -18,15 +18,19 @@ public class Pizzeria {
     private List<Table> tables= new ArrayList<>();
 
     public Pizzeria(int x1, int x2, int x3, int x4) {
-        for (int i = 0; i < x1; i++) tables.add(new Table(1,false,null));
-        for (int i = 0; i < x2; i++) tables.add(new Table(2,false,null));
-        for (int i = 0; i < x3; i++) tables.add(new Table(3,false,null));
-        for (int i = 0; i < x4; i++) tables.add(new Table(4,false,null));
+        for (int i = 0; i < x1; i++) tables.add(new Table(1,false,new ArrayList<>()));
+        for (int i = 0; i < x2; i++) tables.add(new Table(2,false,new ArrayList<>()));
+        for (int i = 0; i < x3; i++) tables.add(new Table(3,false,new ArrayList<>()));
+        for (int i = 0; i < x4; i++) tables.add(new Table(4,false,new ArrayList<>()));
     }
 
 
     public static class Table {
-        private final int capacity;
+        public void setCapacity(int capacity) {
+            this.capacity = capacity;
+        }
+
+        private  int capacity;
         private boolean isOccupied;
         private List<Group> groups;
 
@@ -37,6 +41,9 @@ public class Pizzeria {
         }
         public int getCapacity() {
             return capacity;
+        }
+        public void addGroupToTable(Group group){
+            this.groups.add(group);
         }
         public boolean isOccupied() {
             return isOccupied;

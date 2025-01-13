@@ -3,6 +3,13 @@ package dobreee;
 public class Group {
     private  int size;
 
+    @Override
+    public String toString() {
+        return "Group{" +
+                "size=" + size +
+                '}';
+    }
+
     public Group(int size) {
         this.size = size;
     }
