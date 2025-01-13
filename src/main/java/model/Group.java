@@ -1,11 +1,11 @@
-package dobreee;
+package model;
 
 public class Group {
     private  int size;
 
     @Override
     public String toString() {
-        return "Group{" +
+        return "model.Group{" +
                 "size=" + size +
                 '}';
     }

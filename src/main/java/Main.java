@@ -1,29 +1,42 @@
-import dobreee.Group;
+import model.Group;
+import model.Pizzeria;
+import model.Table;
 
-import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws InterruptedException {
 
-        //  BlockingQueue<Group> queue = new ArrayBlockingQueue<>(50);
-        Pizzeria pizzeria = new Pizzeria(1, 2, 3, 3);
-        System.out.println(pizzeria);
+
+        FileManager manager = new FileManager();
+        int[] capacities = {9, 2, 6, 9};
+        manager.createTablesFile(capacities);
+        List<Table> tables = manager.readTablesFromFile();
+        tables.forEach(System.out::println);
+
+        BlockingQueue<Group> queue = new ArrayBlockingQueue<>(50);
+        Pizzeria pizzeria = new Pizzeria(1, 2, 3, 4);
+      //  System.out.println(pizzeria);
 
         //  Thread guestsThread = new Thread(() -> {
-        ///
         //try {
-//            queue.put(new Group(Group.getRandomGroupSize()));
-//            queue.put(new Group(Group.getRandomGroupSize()));
-//            queue.put(new Group(Group.getRandomGroupSize()));
-//            queue.put(new Group(Group.getRandomGroupSize()));
-//            queue.put(new Group(Group.getRandomGroupSize()));
-//            queue.put(new Group(Group.getRandomGroupSize()));
-//            queue.put(new Group(Group.getRandomGroupSize()));
-//            queue.put(new Group(Group.getRandomGroupSize()));
-//            queue.put(new Group(Group.getRandomGroupSize()));
-//            queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
+        queue.put(new Group(Group.getRandomGroupSize()));
 
 
         //  } catch (InterruptedException e) {
@@ -31,75 +44,47 @@ public class Main {
         //    System.out.println("Goście nie przychodzą");
         //  }
         //  });
-        List<Group> queue = new ArrayList<>();
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-        queue.add(new Group(Group.getRandomGroupSize()));
-
+        //  List<model.Group> queue = new ArrayList<>();
 
         // Thread pizzerman = new Thread(() -> {
-        System.out.println(queue);
-        System.out.println("ilość grup" + queue.size());
+      //  System.out.println(queue);
+       // System.out.println("ilość grup" + queue.size());
         //  try {
-        List<Pizzeria.Table> tablesSortedByCapacity = pizzeria.getTables()
+
+        List<Table> tablesSortedByCapacity = pizzeria.getTables()
                 .stream()
-                .sorted(((o1, o2) -> o1.getCapacity() - o2.getCapacity()))
+                .sorted((o1, o2) -> o1.getCapacity() - o2.getCapacity())
                 .toList();
-        Iterator<Group> it = queue.iterator();
-        while (it.hasNext()) {
-            Group queueGroup = it.next();
-            for (Pizzeria.Table table : tablesSortedByCapacity) {
+
+        Group queueGroup;
+        while ((queueGroup = queue.peek()) != null) {
+            boolean assignedToTable = false;
+            for (Table table : tablesSortedByCapacity) {
                 if (!table.isOccupied() && queueGroup.getSize() <= table.getCapacity()) {
                     table.addGroupToTable(queueGroup);
                     table.setOccupied(true);
                     table.setCapacity(table.getCapacity() - queueGroup.getSize());
                     System.out.println("pierwszy if");
-                    it.remove();
+                    assignedToTable = true;
                     break;
                 } else if (table.isOccupied() && compareGroupSizesByTable(table.getGroups(), queueGroup.getSize()) && queueGroup.getSize() <= table.getCapacity()) {
                     table.addGroupToTable(queueGroup);
                     table.setOccupied(true);
                     table.setCapacity(table.getCapacity() - queueGroup.getSize());
                     System.out.println("drugi if");
-                    it.remove();
+                    assignedToTable = true;
                     break;
                 }
             }
+            if (assignedToTable) {
+                queue.poll();
+            } else {
+                break;
+            }
         }
-
-        System.out.println(pizzeria);
-        System.out.println(queue);
+      //  System.out.println(pizzeria);
+       // System.out.println(queue);
     }
-
-
-    //  while (true) {
-    //zmaleziono stolik
-    //grupa usiadła - while na false
-    //  }
-    //  queue.take();
-    //  Thread.sleep(2000); // Obsługiwanie grupy
-    //   queue.take();
-
-    //   } catch (InterruptedException e) {
-    // Thread.currentThread().interrupt();
-    // System.out.println("Konsument: Przerwano");
-    // }
-    //  });
-    // guestsThread.start();
-    // pizzerman.start();
-
-
 
 
     public static boolean compareGroupSizesByTable(List<Group> tableGroups, int size) {
