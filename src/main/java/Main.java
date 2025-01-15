@@ -9,16 +9,10 @@ import java.util.concurrent.BlockingQueue;
 public class Main {
     public static void main(String[] args) throws InterruptedException {
 
-
         FileManager manager = new FileManager();
-        int[] capacities = {9, 2, 6, 9};
-        manager.createTablesFile(capacities);
-        List<Table> tables = manager.readTablesFromFile();
-        tables.forEach(System.out::println);
-
+        int[] quantityOfTables = {2, 0, 0, 2};
+        manager.createTablesFile(quantityOfTables);
         BlockingQueue<Group> queue = new ArrayBlockingQueue<>(50);
-        Pizzeria pizzeria = new Pizzeria(1, 2, 3, 4);
-      //  System.out.println(pizzeria);
 
         //  Thread guestsThread = new Thread(() -> {
         //try {
@@ -37,8 +31,6 @@ public class Main {
         queue.put(new Group(Group.getRandomGroupSize()));
         queue.put(new Group(Group.getRandomGroupSize()));
         queue.put(new Group(Group.getRandomGroupSize()));
-
-
         //  } catch (InterruptedException e) {
         //     Thread.currentThread().interrupt();
         //    System.out.println("Goście nie przychodzą");
@@ -47,64 +39,68 @@ public class Main {
         //  List<model.Group> queue = new ArrayList<>();
 
         // Thread pizzerman = new Thread(() -> {
-      //  System.out.println(queue);
-       // System.out.println("ilość grup" + queue.size());
+        //  System.out.println(queue);
+        // System.out.println("ilość grup" + queue.size());
         //  try {
-
-        List<Table> tablesSortedByCapacity = pizzeria.getTables()
+        List<Table> tablesSortedByCapacity = manager.readTablesFromFile()
                 .stream()
-                .sorted((o1, o2) -> o1.getCapacity() - o2.getCapacity())
+                .sorted((t1, t2) -> t1.getCapacity() - t2.getCapacity())
                 .toList();
+        Pizzeria pizzeria = new Pizzeria(tablesSortedByCapacity);
 
-        Group queueGroup;
-        while ((queueGroup = queue.peek()) != null) {
-            boolean assignedToTable = false;
-            for (Table table : tablesSortedByCapacity) {
-                if (!table.isOccupied() && queueGroup.getSize() <= table.getCapacity()) {
-                    table.addGroupToTable(queueGroup);
-                    table.setOccupied(true);
-                    table.setCapacity(table.getCapacity() - queueGroup.getSize());
-                    System.out.println("pierwszy if");
-                    assignedToTable = true;
-                    break;
-                } else if (table.isOccupied() && compareGroupSizesByTable(table.getGroups(), queueGroup.getSize()) && queueGroup.getSize() <= table.getCapacity()) {
-                    table.addGroupToTable(queueGroup);
-                    table.setOccupied(true);
-                    table.setCapacity(table.getCapacity() - queueGroup.getSize());
-                    System.out.println("drugi if");
+        boolean assignedToTable;
+        do {
+            assignedToTable = false;
+            for (Group queueGroup : queue) {
+                if (tryAssignGroupToTable(queueGroup, tablesSortedByCapacity)) {
+                    queue.remove(queueGroup);
                     assignedToTable = true;
                     break;
                 }
             }
-            if (assignedToTable) {
-                queue.poll();
-            } else {
-                break;
-            }
-        }
-      //  System.out.println(pizzeria);
-       // System.out.println(queue);
+        } while (assignedToTable);
+
+        manager.writeTablesToFile(pizzeria.getTables()); // do ifów jak uda sie usiąść gościa zeby zapisać do pliku
+        System.out.println("printy");
+        pizzeria.getTables().forEach(System.out::println);
+        System.out.println(queue);
     }
 
+    private static boolean tryAssignGroupToTable(Group group, List<Table> tablesSortedByCapacity) {
+        for (Table table : tablesSortedByCapacity) {
+            if (!table.isOccupied() && group.getSize() <= table.getCapacity()) {
+                table.addGroupToTable(group);
+                table.setOccupied(true);
+                table.setCapacity(table.getCapacity() - group.getSize());
+                System.out.println("pierwszy if");
+                return true;
+            } else if (table.isOccupied() && compareGroupSizes(table.getGroups(), group.getSize()) && group.getSize() <= table.getCapacity()) {
+                table.addGroupToTable(group);
+                table.setOccupied(true);
+                table.setCapacity(table.getCapacity() - group.getSize());
+                System.out.println("drugi if");
+                return true;
+            }
+        }
+        return false;
+    }
 
-    public static boolean compareGroupSizesByTable(List<Group> tableGroups, int size) {
+    public static boolean compareGroupSizes(List<Group> tableGroups, int comingGroupSize) {
         if (tableGroups.isEmpty()) {
             return true;
         }
         Group firstGroup = tableGroups.get(0);
-
         for (Group group : tableGroups) {
             if (group.getSize() != firstGroup.getSize()) {
                 return false;
             }
         }
         for (Group group : tableGroups) {
-            if (group.getSize() != size) {
+            if (group.getSize() != comingGroupSize) {
                 return false;
             }
         }
         return true;
     }
-
 }
 

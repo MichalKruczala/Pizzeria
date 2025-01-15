@@ -1,29 +1,43 @@
 package model;
 
-import model.Group;
-
 import java.util.List;
 
 public class Table {
-    public void setCapacity(int capacity) {
-        this.capacity = capacity;
-    }
 
-    private  int capacity;
+
+    private int initialCapacity;
+    private int capacity;
     private boolean isOccupied;
     private List<Group> groups;
 
-    public Table(int capacity,boolean isOccupied, List<Group> groups) {
+    public Table(int initialCapacity, int capacity, boolean isOccupied, List<Group> groups) {
+        this.initialCapacity = initialCapacity;
         this.capacity = capacity;
         this.isOccupied = isOccupied;
         this.groups = groups;
     }
+
+    public void setCapacity(int capacity) {
+        this.capacity = capacity;
+    }
+
     public int getCapacity() {
         return capacity;
     }
-    public void addGroupToTable(Group group){
+
+    public void addGroupToTable(model.Group group) {
         this.groups.add(group);
     }
+
+
+    public int getInitialCapacity() {
+        return initialCapacity;
+    }
+
+    public void setInitialCapacity(int initialCapacity) {
+        this.initialCapacity = initialCapacity;
+    }
+
     public boolean isOccupied() {
         return isOccupied;
     }
@@ -43,9 +57,10 @@ public class Table {
     @Override
     public String toString() {
         return "Table{" +
-                "capacity=" + capacity +
+                "initialCapacity=" + initialCapacity +
+                ", capacity=" + capacity +
                 ", isOccupied=" + isOccupied +
                 ", groups=" + groups +
-                "}";
+                '}';
     }
 }
