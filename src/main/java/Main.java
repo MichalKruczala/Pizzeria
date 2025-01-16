@@ -1,70 +1,99 @@
 import model.Group;
-import model.Pizzeria;
 import model.Table;
 
+import java.time.Duration;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicReference;
 
 public class Main {
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
 
         FileManager manager = new FileManager();
-        int[] quantityOfTables = {2, 0, 0, 2};
+        int[] quantityOfTables = {3, 2, 3, 2};
         manager.createTablesFile(quantityOfTables);
-        BlockingQueue<Group> queue = new ArrayBlockingQueue<>(50);
-
-        //  Thread guestsThread = new Thread(() -> {
-        //try {
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        queue.put(new Group(Group.getRandomGroupSize()));
-        //  } catch (InterruptedException e) {
-        //     Thread.currentThread().interrupt();
-        //    System.out.println("Goście nie przychodzą");
-        //  }
-        //  });
-        //  List<model.Group> queue = new ArrayList<>();
-
-        // Thread pizzerman = new Thread(() -> {
-        //  System.out.println(queue);
-        // System.out.println("ilość grup" + queue.size());
-        //  try {
-        List<Table> tablesSortedByCapacity = manager.readTablesFromFile()
+        AtomicReference<List<Table>> tablesSortedByCapacity = new AtomicReference<>(manager.readTablesFromFile()
                 .stream()
-                .sorted((t1, t2) -> t1.getCapacity() - t2.getCapacity())
-                .toList();
-        Pizzeria pizzeria = new Pizzeria(tablesSortedByCapacity);
+                .sorted((t1, t2) -> t1.getInitialCapacity() - t2.getInitialCapacity())
+                .toList());
+        BlockingQueue<Group> queue = new ArrayBlockingQueue<>(5);
 
-        boolean assignedToTable;
-        do {
-            assignedToTable = false;
-            for (Group queueGroup : queue) {
-                if (tryAssignGroupToTable(queueGroup, tablesSortedByCapacity)) {
-                    queue.remove(queueGroup);
-                    assignedToTable = true;
-                    break;
+        Thread guestsThread = new Thread(() -> {
+            try {
+                while (true) {
+                    queue.put(new Group(Group.getRandomGroupSize()));
+                    Thread.sleep(2 * 1000);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.out.println("Goście nie przychodzą");
+            }
+        });
+
+
+        Thread pizzerman = new Thread(() -> {
+            while (true) {
+                try {
+                    boolean assignedToTable;
+                    do {
+                        assignedToTable = false;
+                        for (Group queueGroup : queue) {
+                            if (tryAssignGroupToTable(queueGroup, tablesSortedByCapacity.get())) {
+                                manager.writeTablesToFile(tablesSortedByCapacity.get());
+                                queue.remove(queueGroup);
+                                queue.forEach(System.out::println);
+                                checkAndRemoveGroups(tablesSortedByCapacity.get());
+                                tablesSortedByCapacity.get().stream().forEach(System.out::println);
+                                tablesSortedByCapacity.set(manager.readTablesFromFile());
+                                queue.forEach(System.out::println);
+                                Thread.sleep(4 * 1000);          ////   czas obsługi kelnera
+                                assignedToTable = true;
+                                break;
+                            }
+                        }
+
+                    } while (assignedToTable);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    System.out.println("Goście nie przychodzą");
+
                 }
             }
-        } while (assignedToTable);
-
-        manager.writeTablesToFile(pizzeria.getTables()); // do ifów jak uda sie usiąść gościa zeby zapisać do pliku
-        System.out.println("printy");
-        pizzeria.getTables().forEach(System.out::println);
-        System.out.println(queue);
+        });
+        guestsThread.start();
+        pizzerman.start();
     }
+
+
+    public static void checkAndRemoveGroups(List<Table> tables) {
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
+
+        for (Table table : tables) {
+            Iterator<Group> iterator = table.getGroups().iterator();
+            int totalRemovedCapacity = 0;
+
+            while (iterator.hasNext()) {
+                Group group = iterator.next();
+                LocalTime groupTime = LocalTime.parse(group.getServiceTime(), timeFormatter);
+                if (Duration.between(groupTime, LocalTime.now()).toMillis() > 60_000) {
+                    totalRemovedCapacity += group.getSize();
+                    iterator.remove();
+                }
+            }
+            table.setCapacity(table.getCapacity() + totalRemovedCapacity);
+            if (table.getGroups().isEmpty()) {
+                table.setOccupied(false);
+                table.setCapacity(table.getInitialCapacity());
+            } else {
+                table.setOccupied(true);
+            }
+        }
+    }
+
 
     private static boolean tryAssignGroupToTable(Group group, List<Table> tablesSortedByCapacity) {
         for (Table table : tablesSortedByCapacity) {
