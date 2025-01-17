@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.regex.Matcher;
@@ -18,7 +17,7 @@ public class FileManager {
     private static final String FILE_PATH = "pizzeria_tables.txt";
     private final Semaphore semaphore = new Semaphore(1);
 
-    public void createTablesFile(int[] quantityOfTables) {
+    public void createTablesToFile(int[] quantityOfTables) {
         try {
             semaphore.acquire();
             try (BufferedWriter writer = new BufferedWriter(new FileWriter(FILE_PATH))) {
@@ -95,6 +94,7 @@ public class FileManager {
                         group.getServiceTime()))
                 .collect(Collectors.joining(", ")) + "]";
     }
+
     public Table parseTable(String line) {
         line = line.trim();
         int initialCapacity = Integer.parseInt(

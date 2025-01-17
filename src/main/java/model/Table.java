@@ -1,10 +1,9 @@
 package model;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class Table {
-
-
     private int initialCapacity;
     private int capacity;
     private boolean isOccupied;
@@ -16,6 +15,10 @@ public class Table {
         this.isOccupied = isOccupied;
         this.groups = groups;
     }
+    public void clearAllGroupsFromTable() {
+        this.setGroups(new ArrayList<>());
+    }
+
 
     public void setCapacity(int capacity) {
         this.capacity = capacity;

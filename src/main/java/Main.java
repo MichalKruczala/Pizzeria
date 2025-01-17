@@ -1,99 +1,93 @@
 import model.Group;
+import model.Pizzeria;
 import model.Table;
 
-import java.time.Duration;
-import java.time.LocalTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
 public class Main {
     public static void main(String[] args) {
+        BlockingQueue<Group> queue = new ArrayBlockingQueue<>(5);
+        AtomicBoolean isFireAlarmTriggered = new AtomicBoolean(false);
 
         FileManager manager = new FileManager();
         int[] quantityOfTables = {3, 2, 3, 2};
-        manager.createTablesFile(quantityOfTables);
+        manager.createTablesToFile(quantityOfTables);
+
         AtomicReference<List<Table>> tablesSortedByCapacity = new AtomicReference<>(manager.readTablesFromFile()
                 .stream()
                 .sorted((t1, t2) -> t1.getInitialCapacity() - t2.getInitialCapacity())
                 .toList());
-        BlockingQueue<Group> queue = new ArrayBlockingQueue<>(5);
 
         Thread guestsThread = new Thread(() -> {
             try {
-                while (true) {
-                    queue.put(new Group(Group.getRandomGroupSize()));
-                    Thread.sleep(2 * 1000);
+                while (!isFireAlarmTriggered.get()) {
+                    queue.put(new Group(Group.getRandomGroupSize(3)));
+                    Thread.sleep(6 * 1000);              // czas co ile goście przychodzą
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                System.out.println("Goście nie przychodzą");
+                System.out.println("Guests are not comming");
             }
         });
 
 
         Thread pizzerman = new Thread(() -> {
-            while (true) {
+            while (!isFireAlarmTriggered.get()) {
                 try {
                     boolean assignedToTable;
                     do {
                         assignedToTable = false;
                         for (Group queueGroup : queue) {
+                            Pizzeria.removeGroupsAfterCertainTime(tablesSortedByCapacity.get(), 60);
                             if (tryAssignGroupToTable(queueGroup, tablesSortedByCapacity.get())) {
                                 manager.writeTablesToFile(tablesSortedByCapacity.get());
                                 queue.remove(queueGroup);
-                                queue.forEach(System.out::println);
-                                checkAndRemoveGroups(tablesSortedByCapacity.get());
-                                tablesSortedByCapacity.get().stream().forEach(System.out::println);
+                                tablesSortedByCapacity.get().forEach(System.out::println);
                                 tablesSortedByCapacity.set(manager.readTablesFromFile());
                                 queue.forEach(System.out::println);
-                                Thread.sleep(4 * 1000);          ////   czas obsługi kelnera
+                                System.out.println("----------------------------------------------------------------------");
+                                Thread.sleep(8 * 1000);     // pizzerman serve quest each 8 seconds
                                 assignedToTable = true;
                                 break;
                             }
                         }
-
-                    } while (assignedToTable);
+                    } while (assignedToTable && !isFireAlarmTriggered.get());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    System.out.println("Goście nie przychodzą");
+                    System.out.println("Pizzerman is not serving quests");
 
                 }
             }
         });
+        Thread firemanFighter = new Thread(() -> {
+            try {
+                Thread.sleep(30 * 1000);    // time to fire alarm
+                isFireAlarmTriggered.set(true);
+                System.out.println("Firefighter thread: Fire! Immediate evacuation!");
+                queue.clear();
+                System.out.println("Queue state :"+ queue.stream().count());
+                for (Table table : tablesSortedByCapacity.get()) {
+                    table.clearAllGroupsFromTable();
+                    table.setOccupied(false);
+                    table.setCapacity(table.getInitialCapacity());
+                }
+                System.out.println("Firefighter: Pizzeria została zamknięta,wszyscy wyszli.");
+                tablesSortedByCapacity.get().forEach(System.out::println);
+                manager.writeTablesToFile(tablesSortedByCapacity.get());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.out.println("Firefighter został przerwany.");
+            }
+
+        });
         guestsThread.start();
         pizzerman.start();
+        firemanFighter.start();
     }
-
-
-    public static void checkAndRemoveGroups(List<Table> tables) {
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm:ss");
-
-        for (Table table : tables) {
-            Iterator<Group> iterator = table.getGroups().iterator();
-            int totalRemovedCapacity = 0;
-
-            while (iterator.hasNext()) {
-                Group group = iterator.next();
-                LocalTime groupTime = LocalTime.parse(group.getServiceTime(), timeFormatter);
-                if (Duration.between(groupTime, LocalTime.now()).toMillis() > 60_000) {
-                    totalRemovedCapacity += group.getSize();
-                    iterator.remove();
-                }
-            }
-            table.setCapacity(table.getCapacity() + totalRemovedCapacity);
-            if (table.getGroups().isEmpty()) {
-                table.setOccupied(false);
-                table.setCapacity(table.getInitialCapacity());
-            } else {
-                table.setOccupied(true);
-            }
-        }
-    }
-
 
     private static boolean tryAssignGroupToTable(Group group, List<Table> tablesSortedByCapacity) {
         for (Table table : tablesSortedByCapacity) {
@@ -101,35 +95,15 @@ public class Main {
                 table.addGroupToTable(group);
                 table.setOccupied(true);
                 table.setCapacity(table.getCapacity() - group.getSize());
-                System.out.println("pierwszy if");
                 return true;
-            } else if (table.isOccupied() && compareGroupSizes(table.getGroups(), group.getSize()) && group.getSize() <= table.getCapacity()) {
+            } else if (table.isOccupied() && Group.compareGroupSizes(table.getGroups(), group.getSize()) && group.getSize() <= table.getCapacity()) {
                 table.addGroupToTable(group);
                 table.setOccupied(true);
                 table.setCapacity(table.getCapacity() - group.getSize());
-                System.out.println("drugi if");
                 return true;
             }
         }
         return false;
-    }
-
-    public static boolean compareGroupSizes(List<Group> tableGroups, int comingGroupSize) {
-        if (tableGroups.isEmpty()) {
-            return true;
-        }
-        Group firstGroup = tableGroups.get(0);
-        for (Group group : tableGroups) {
-            if (group.getSize() != firstGroup.getSize()) {
-                return false;
-            }
-        }
-        for (Group group : tableGroups) {
-            if (group.getSize() != comingGroupSize) {
-                return false;
-            }
-        }
-        return true;
     }
 }
 

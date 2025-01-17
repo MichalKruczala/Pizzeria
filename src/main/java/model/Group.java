@@ -1,8 +1,8 @@
 package model;
 
-import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 public class Group {
     private int size;
@@ -12,6 +12,28 @@ public class Group {
         this.size = size;
         this.serviceTime = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
 
+    }
+
+    public static int getRandomGroupSize(int maxGroupSize) {
+        return (int) (Math.random() * maxGroupSize) + 1;
+    }
+
+    public static boolean compareGroupSizes(List<Group> tableGroups, int comingGroupSize) {
+        if (tableGroups.isEmpty()) {
+            return true;
+        }
+        Group firstGroup = tableGroups.get(0);
+        for (Group group : tableGroups) {
+            if (group.getSize() != firstGroup.getSize()) {
+                return false;
+            }
+        }
+        for (Group group : tableGroups) {
+            if (group.getSize() != comingGroupSize) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public int getSize() {
@@ -27,12 +49,6 @@ public class Group {
     }
 
 
-
-
-    public static int getRandomGroupSize() {
-        return (int) (Math.random() * 3) + 1;
-
-    }
     @Override
     public String toString() {
         return "Group{" +
