@@ -13,7 +13,6 @@ public class Group {
         this.serviceTime = LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss"));
 
     }
-
     public static int getRandomGroupSize(int maxGroupSize) {
         return (int) (Math.random() * maxGroupSize) + 1;
     }

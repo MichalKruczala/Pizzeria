@@ -10,14 +10,14 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class Main {
     public static void main(String[] args) {
+        FileManager fileManager = new FileManager();
         BlockingQueue<Group> queue = new ArrayBlockingQueue<>(5);
         AtomicBoolean isFireAlarmTriggered = new AtomicBoolean(false);
 
-        FileManager manager = new FileManager();
         int[] quantityOfTables = {3, 2, 3, 2};
-        manager.createTablesToFile(quantityOfTables);
+        fileManager.createTablesToFile(quantityOfTables);
 
-        AtomicReference<List<Table>> tablesSortedByCapacity = new AtomicReference<>(manager.readTablesFromFile()
+        AtomicReference<List<Table>> tablesSortedByCapacity = new AtomicReference<>(fileManager.readTablesFromFile()
                 .stream()
                 .sorted((t1, t2) -> t1.getInitialCapacity() - t2.getInitialCapacity())
                 .toList());
@@ -30,10 +30,9 @@ public class Main {
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                System.out.println("Guests are not comming");
+                GUI.printMessage("Guests are not comming");
             }
         });
-
 
         Thread pizzerman = new Thread(() -> {
             while (!isFireAlarmTriggered.get()) {
@@ -44,12 +43,12 @@ public class Main {
                         for (Group queueGroup : queue) {
                             Pizzeria.removeGroupsAfterCertainTime(tablesSortedByCapacity.get(), 60);
                             if (tryAssignGroupToTable(queueGroup, tablesSortedByCapacity.get())) {
-                                manager.writeTablesToFile(tablesSortedByCapacity.get());
+                                fileManager.writeTablesToFile(tablesSortedByCapacity.get());
                                 queue.remove(queueGroup);
                                 tablesSortedByCapacity.get().forEach(System.out::println);
-                                tablesSortedByCapacity.set(manager.readTablesFromFile());
+                                tablesSortedByCapacity.set(fileManager.readTablesFromFile());
                                 queue.forEach(System.out::println);
-                                System.out.println("----------------------------------------------------------------------");
+                                GUI.printMessage("----------------------------------------------------------------------");
                                 Thread.sleep(8 * 1000);     // pizzerman serve quest each 8 seconds
                                 assignedToTable = true;
                                 break;
@@ -58,7 +57,7 @@ public class Main {
                     } while (assignedToTable && !isFireAlarmTriggered.get());
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    System.out.println("Pizzerman is not serving quests");
+                    GUI.printMessage("Pizzerman is not serving quests");
 
                 }
             }
@@ -67,22 +66,21 @@ public class Main {
             try {
                 Thread.sleep(30 * 1000);    // time to fire alarm
                 isFireAlarmTriggered.set(true);
-                System.out.println("Firefighter thread: Fire! Immediate evacuation!");
+                GUI.printMessage("Firefighter thread: Fire! Immediate evacuation!");
                 queue.clear();
-                System.out.println("Queue state :"+ queue.stream().count());
+                GUI.printMessage("Queue state :" + queue.stream().count());
                 for (Table table : tablesSortedByCapacity.get()) {
                     table.clearAllGroupsFromTable();
                     table.setOccupied(false);
                     table.setCapacity(table.getInitialCapacity());
                 }
-                System.out.println("Firefighter: Pizzeria została zamknięta,wszyscy wyszli.");
+                GUI.printMessage("Firefighter: Pizzeria has been closer,everyone left.");
                 tablesSortedByCapacity.get().forEach(System.out::println);
-                manager.writeTablesToFile(tablesSortedByCapacity.get());
+                fileManager.writeTablesToFile(tablesSortedByCapacity.get());
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                System.out.println("Firefighter został przerwany.");
+                GUI.printMessage("Firefighter został przerwany.");
             }
-
         });
         guestsThread.start();
         pizzerman.start();

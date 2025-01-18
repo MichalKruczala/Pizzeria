@@ -36,7 +36,7 @@ public class FileManager {
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.out.println("Thread was interrupted: " + e.getMessage());
+            GUI.printMessage("Thread was interrupted: " + e.getMessage());
         }
     }
 
@@ -50,13 +50,13 @@ public class FileManager {
                     tables.add(parseTable(line));
                 }
             } catch (IOException e) {
-                System.out.println("Error reading file: " + e.getMessage());
+                GUI.printMessage("Error reading file: " + e.getMessage());
             } finally {
                 semaphore.release();
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.out.println("Thread was interrupted: " + e.getMessage());
+            GUI.printMessage("Thread was interrupted: " + e.getMessage());
         }
         return tables;
     }
@@ -69,13 +69,13 @@ public class FileManager {
                     writer.write(formatTableForFile(table));
                 }
             } catch (IOException e) {
-                System.out.println("Error writing to file: " + e.getMessage());
+                GUI.printMessage("Error writing to file: " + e.getMessage());
             } finally {
                 semaphore.release();
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            System.out.println("Thread was interrupted: " + e.getMessage());
+            GUI.printMessage("Thread was interrupted: " + e.getMessage());
         }
     }
 
