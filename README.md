@@ -20,7 +20,7 @@ Projekt został zrealizowany zgodnie z opisem tematu, wykorzystując wymagane ko
 
 System składa się z kilku klas:
 
-1. **Main**:
+1. **app.Main**:
     - Odpowiada za inicjalizację pizzerii, stolików, kolejki i wątków (gości, pizzermana, strażaka).
     - Zarządza współdzielonymi zasobami za pomocą mechanizmów wielowątkowości, takich jak `BlockingQueue` i `AtomicBoolean`.
 
@@ -34,11 +34,11 @@ System składa się z kilku klas:
 4. **Pizzeria**:
     - Zarządza logiką usuwania grup, które spędziły więcej czasu przy stoliku, niż jest to dozwolone.
 
-5. **FileManager**:
+5. **Managers.FileManager**:
     - Obsługuje zapis i odczyt stanu stolików do/z pliku.
     - Synchronizuje dostęp do pliku za pomocą semaforów.
 
-6. **GUI**:
+6. **gui.GUI**:
     - Centralizuje wyświetlanie komunikatów w konsoli, ułatwiając zarządzanie wyjściem.
 
 ---
@@ -65,7 +65,7 @@ System składa się z kilku klas:
 
 ## 5. Dodane elementy specjalne
 
-- Wprowadzenie klasy `GUI` w celu centralizacji wyświetlania komunikatów.
+- Wprowadzenie klasy `gui.GUI` w celu centralizacji wyświetlania komunikatów.
 - Mechanizm dynamicznego przydzielania czasu pojawiania się grup (`Thread.sleep` z losowymi interwałami).
 - Możliwość dynamicznego ustawiania maksymalnego czasu, po którym grupa jest usuwana ze stolika.
 
@@ -81,15 +81,15 @@ System składa się z kilku klas:
 ## 7. Linki do istotnych fragmentów kodu
 
 - **Tworzenie i obsługa plików**:
-    - [FileManager: `writeTablesToFile`](https://github.com/TwojeRepozytorium/FileManager.java#L45)
-    - [FileManager: `readTablesFromFile`](https://github.com/TwojeRepozytorium/FileManager.java#L25)
+    - [Managers.FileManager: `writeTablesToFile`](https://github.com/TwojeRepozytorium/FileManager.java#L45)
+    - [Managers.FileManager: `readTablesFromFile`](https://github.com/TwojeRepozytorium/FileManager.java#L25)
 
 - **Tworzenie procesów i wątków**:
-    - [Main: wątki gości, pizzermana, strażaka](https://github.com/TwojeRepozytorium/Main.java#L15)
+    - [app.Main: wątki gości, pizzermana, strażaka](https://github.com/TwojeRepozytorium/Main.java#L15)
 
 - **Synchronizacja wątków**:
-    - [FileManager: użycie `Semaphore`](https://github.com/TwojeRepozytorium/FileManager.java#L10)
-    - [Main: użycie `AtomicBoolean`](https://github.com/TwojeRepozytorium/Main.java#L13)
+    - [Managers.FileManager: użycie `Semaphore`](https://github.com/TwojeRepozytorium/FileManager.java#L10)
+    - [app.Main: użycie `AtomicBoolean`](https://github.com/TwojeRepozytorium/Main.java#L13)
 
 - **Obsługa sygnałów i stanu awaryjnego**:
     - [Firefighter: obsługa alarmu pożarowego](https://github.com/TwojeRepozytorium/Main.java#L67)
@@ -106,7 +106,7 @@ System składa się z kilku klas:
 
 - **Wykorzystanie konstrukcji systemowych**: 20%  
   W projekcie wykorzystano następujące konstrukcje:
-    1. Obsługa plików (`FileManager`).
+    1. Obsługa plików (`Managers.FileManager`).
     2. Tworzenie i obsługa wątków (`Thread`, `Runnable`).
     3. Synchronizacja wątków (`Semaphore`, `BlockingQueue`, `AtomicBoolean`).
     4. Obsługa sygnałów i sytuacji awaryjnych (`isFireAlarmTriggered`).

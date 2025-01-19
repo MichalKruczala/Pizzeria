@@ -1,3 +1,6 @@
+package Managers;
+
+import gui.GUI;
 import model.Group;
 import model.Table;
 
@@ -25,7 +28,8 @@ public class FileManager {
                     int tableCapacity = i + 1;
                     for (int j = 0; j < quantityOfTables[i]; j++) {
                         if (quantityOfTables[i] > 0) {
-                            writer.write(String.format("Table{initialCapacity=%d, capacity=%d, isOccupied=false, groups=[]}\n", tableCapacity, tableCapacity));
+                            writer.write(String.format("Table{initialCapacity=%d, capacity=%d, isOccupied=false, groups=[]}\n",
+                                    tableCapacity, tableCapacity));
                         }
                     }
                 }
@@ -78,25 +82,28 @@ public class FileManager {
             GUI.printMessage("Thread was interrupted: " + e.getMessage());
         }
     }
-
     private String formatTableForFile(Table table) {
-        return String.format("Table{initialCapacity=%d, capacity=%d, isOccupied=%b, groups=%s}\n",
+        return String.format(
+                "Table{initialCapacity=%d, capacity=%d, isOccupied=%b, groups=%s}\n",
                 table.getInitialCapacity(),
                 table.getCapacity(),
                 table.isOccupied(),
-                formatGroups(table.getGroups()));
+                formatGroups(table.getGroups())
+        );
     }
-
     private String formatGroups(List<Group> groups) {
         return "[" + groups.stream()
-                .map(group -> String.format("model.Group{size=%d, serviceTime=%s}",
+                .map(group -> String.format(
+                        "model.Group{size=%d, serviceTime=%s, userThreads=%s}",
                         group.getSize(),
-                        group.getServiceTime()))
+                        group.getServiceTime(),
+                        group.getUserThreadIds().toString()
+                ))
                 .collect(Collectors.joining(", ")) + "]";
     }
-
     public Table parseTable(String line) {
         line = line.trim();
+
         int initialCapacity = Integer.parseInt(
                 line.replaceAll(".*initialCapacity=(\\d+).*", "$1")
         );
@@ -106,17 +113,28 @@ public class FileManager {
         boolean isOccupied = Boolean.parseBoolean(
                 line.replaceAll(".*isOccupied=(true|false).*", "$1")
         );
+
         List<Group> groups = new ArrayList<>();
-        Pattern groupPattern = Pattern.compile("model\\.Group\\{size=(\\d+), serviceTime=([\\d:]+)\\}");
+        Pattern groupPattern = Pattern.compile(
+                "model\\.Group\\{size=(\\d+), serviceTime=([\\d:]+), userThreads=\\[(.*?)\\]\\}"
+        );
         Matcher matcher = groupPattern.matcher(line);
+
         while (matcher.find()) {
             int size = Integer.parseInt(matcher.group(1));
             String serviceTime = matcher.group(2);
-
-            Group group = new Group(size);
-            group.setServiceTime(serviceTime);
+            String userThreadsStr = matcher.group(3).trim();
+            List<Long> tidList = new ArrayList<>();
+            if (!userThreadsStr.isEmpty()) {
+                String[] splitTids = userThreadsStr.split(",");
+                for (String tid : splitTids) {
+                    tidList.add(Long.parseLong(tid.trim()));
+                }
+            }
+            Group group = new Group(size, serviceTime, tidList);
             groups.add(group);
         }
+
         return new Table(initialCapacity, capacity, isOccupied, groups);
     }
 }
