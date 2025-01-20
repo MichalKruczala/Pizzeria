@@ -6,6 +6,8 @@ import model.Group;
 import model.Pizzeria;
 import model.Table;
 
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ArrayBlockingQueue;
@@ -35,8 +37,8 @@ public class Main {
         Thread guestsThread = new Thread(() -> {
             try {
                 while (!isFireAlarmTriggered.get()) {
-                    queue.put(new Group(Group.getRandomGroupSize(40)));
-                   // Thread.sleep(3 * 1000);
+                    queue.put(new Group(Group.getRandomGroupSize(3)));
+                    Thread.sleep(1 * 1);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -45,25 +47,32 @@ public class Main {
         });
 
         Thread pizzerman = new Thread(() -> {
-            while (!isFireAlarmTriggered.get()) {
-                boolean assignedToTable;
-                do {
-                    assignedToTable = false;
-                    for (Group queueGroup : queue) {
-                        Pizzeria.removeGroupsAfterCertainTime(tablesSortedByCapacity.get(), 3);
-                        if (tryAssignGroupToTable(queueGroup, tablesSortedByCapacity.get())) {
-                            fileManager.writeTablesToFile(tablesSortedByCapacity.get());
-                            queue.remove(queueGroup);
-                            tablesSortedByCapacity.get().forEach(System.out::println);
-                            tablesSortedByCapacity.set(fileManager.readTablesFromFile());
-                            queue.forEach(System.out::println);
-                            GUI.printMessage("----------------------------------------------------------------------");
-                          //  Thread.sleep(5 * 1000);
-                            assignedToTable = true;
-                            break;
+            try {
+                while (!isFireAlarmTriggered.get()) {
+                    boolean assignedToTable;
+                    do {
+                        assignedToTable = false;
+                        for (Group queueGroup : queue) {
+                            Pizzeria.removeGroupsAfterCertainTime(tablesSortedByCapacity.get(), 3);
+                            if (tryAssignGroupToTable(queueGroup, tablesSortedByCapacity.get())) {
+                                fileManager.writeTablesToFile(tablesSortedByCapacity.get());
+                                queue.remove(queueGroup);
+                                GUI.printMessage("           Positioning guests in the pizzeria");
+                                tablesSortedByCapacity.get().forEach(System.out::println);
+                                tablesSortedByCapacity.set(fileManager.readTablesFromFile());
+                                GUI.printMessage("            Quantity of groups in queue: " + queue.size());
+                                queue.forEach(System.out::println);
+                                GUI.printMessage("----------------------------------------------------------------------");
+                                Thread.sleep(3 * 1);
+                                assignedToTable = true;
+                                break;
+                            }
                         }
-                    }
-                } while (assignedToTable && !isFireAlarmTriggered.get());
+                    } while (assignedToTable && !isFireAlarmTriggered.get());
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                GUI.printMessage("Firefighter has been interrupted.");
             }
         });
 
@@ -72,21 +81,12 @@ public class Main {
                 Thread.sleep(40 * 1000);
                 isFireAlarmTriggered.set(true);
                 GUI.printMessage("Firefighter thread: Fire! Immediate evacuation!");
-                for (Group group : queue) {
-                    for (Long tid : group.getUserThreadIds()) {
-                        Thread thread = Main.getThreadById(tid);
-                        if (thread != null) {
-                            System.out.println("Guest ->Thread TID " + tid + " finished by firefighter from queue");
-                            thread.interrupt();
-                            Main.removeThreadById(tid);
-                        }
-                    }
-                }
+                endAllThreadsBasedOnQueue(queue);
                 queue.clear();
-                for(Map.Entry<Long, Thread> entry : threadMap.entrySet()){
+                for (Map.Entry<Long, Thread> entry : threadMap.entrySet()) {
                     System.out.println("Guest ->Thread ID " + entry.getKey() + " left restaurant cause firefighter");
+                    entry.getValue().interrupt();
                 }
-                    threadMap.clear();
                 for (Table table : tablesSortedByCapacity.get()) {
                     table.clearAllGroupsFromTable();
                     table.setOccupied(false);
@@ -99,6 +99,14 @@ public class Main {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 GUI.printMessage("Firefighter has been interrupted.");
+            } finally {
+                for (Map.Entry<Long, Thread> entry : threadMap.entrySet()) {
+                    if (!entry.getValue().isInterrupted()) {
+                        GUI.printMessage("Thread alive in map - something went wrong");
+                    }
+                }
+                threadMap.clear();
+                GUI.printMessage("map cleared - all threads are dead");
             }
         });
         guestsThread.start();
@@ -112,6 +120,7 @@ public class Main {
                 table.addGroupToTable(group);
                 table.setOccupied(true);
                 table.setCapacity(table.getCapacity() - group.getSize());
+                group.setServiceTime(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
                 return true;
             } else if (table.isOccupied() &&
                     Group.compareGroupSizes(table.getGroups(), group.getSize()) &&
@@ -119,10 +128,24 @@ public class Main {
                 table.addGroupToTable(group);
                 table.setOccupied(true);
                 table.setCapacity(table.getCapacity() - group.getSize());
+                group.setServiceTime(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
                 return true;
             }
         }
         return false;
+    }
+
+    private static void endAllThreadsBasedOnQueue(BlockingQueue<Group> queue) {
+        for (Group group : queue) {
+            for (Long tid : group.getUserThreadIds()) {
+                Thread thread = Main.getThreadById(tid);
+                if (thread != null) {
+                    GUI.printMessage("Guest ->Thread TID " + tid + " finished by firefighter from queue");
+                    thread.interrupt();
+                    Main.removeThreadById(tid);
+                }
+            }
+        }
     }
 
     public static void registerThread(Thread t) {

@@ -32,7 +32,7 @@ public class Pizzeria {
                         Thread t = Main.getThreadById(tid);
                         if (t != null) {
                             t.interrupt();
-                            System.out.println("kończę wątek o ID: " + tid);
+                            System.out.println("Ending thread -> ID: " + tid);
                             Main.removeThreadById(tid);
                         }
                     }
