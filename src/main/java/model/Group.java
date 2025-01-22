@@ -31,6 +31,8 @@ public class Group {
             Main.registerThread(t);
             this.userThreadIds.add(t.getId());
         }
+
+
     }
     public Group(int size, String serviceTime, List<Long> userThreadIds) {
         this.size = size;

@@ -20,6 +20,9 @@ public class Main {
     public static final Map<Long, Thread> threadMap = new ConcurrentHashMap<>();
 
     public static void main(String[] args) {
+
+
+
         FileManager fileManager = new FileManager();
         BlockingQueue<Group> queue = new ArrayBlockingQueue<>(6);
         AtomicBoolean isFireAlarmTriggered = new AtomicBoolean(false);
@@ -38,7 +41,7 @@ public class Main {
             try {
                 while (!isFireAlarmTriggered.get()) {
                     queue.put(new Group(Group.getRandomGroupSize(3)));
-                    Thread.sleep(1 * 1);
+                    Thread.sleep(1 * 1000);
                 }
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
@@ -63,7 +66,7 @@ public class Main {
                                 GUI.printMessage("            Quantity of groups in queue: " + queue.size());
                                 queue.forEach(System.out::println);
                                 GUI.printMessage("----------------------------------------------------------------------");
-                                Thread.sleep(3 * 1);
+                                Thread.sleep(3 * 1000);
                                 assignedToTable = true;
                                 break;
                             }
