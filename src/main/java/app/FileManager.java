@@ -1,6 +1,5 @@
-package Managers;
+package app;
 
-import gui.GUI;
 import model.Group;
 import model.Table;
 
@@ -82,6 +81,7 @@ public class FileManager {
             GUI.printMessage("Thread was interrupted: " + e.getMessage());
         }
     }
+
     private String formatTableForFile(Table table) {
         return String.format(
                 "Table{initialCapacity=%d, capacity=%d, isOccupied=%b, groups=%s}\n",
@@ -91,6 +91,7 @@ public class FileManager {
                 formatGroups(table.getGroups())
         );
     }
+
     private String formatGroups(List<Group> groups) {
         return "[" + groups.stream()
                 .map(group -> String.format(
@@ -101,6 +102,7 @@ public class FileManager {
                 ))
                 .collect(Collectors.joining(", ")) + "]";
     }
+
     public Table parseTable(String line) {
         line = line.trim();
 
@@ -134,7 +136,6 @@ public class FileManager {
             Group group = new Group(size, serviceTime, tidList);
             groups.add(group);
         }
-
         return new Table(initialCapacity, capacity, isOccupied, groups);
     }
 }

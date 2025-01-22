@@ -1,5 +1,7 @@
 package model;
 
+import model.Group;
+
 import java.util.ArrayList;
 import java.util.List;
 
@@ -28,7 +30,7 @@ public class Table {
         return capacity;
     }
 
-    public void addGroupToTable(model.Group group) {
+    public void addGroupToTable(Group group) {
         this.groups.add(group);
     }
 
