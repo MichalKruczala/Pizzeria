@@ -43,6 +43,7 @@ System składa się z kilku klas:
 
 ---
 ![img.png](img.png)
+![img_1.png](img_1.png)
 
 ## 3. Co udało się zrobić
 
