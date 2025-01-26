@@ -27,10 +27,10 @@ public class Guests {
                                 GroupFileManager.writeQueueToFile(queue);
                                 System.out.println("   Added group: " + group);
                                 queue.forEach(g -> System.out.println(Group.toStringWithoutThreads(g)));
-                                Thread.sleep(1000);
+                               // Thread.sleep(1000);
                             } else {
-                                System.out.println("   Queue is Full    ");
-                                Thread.sleep(1000);
+                                //System.out.println("   Queue is Full    ");
+                               // Thread.sleep(1000);
                             }
 
                         }

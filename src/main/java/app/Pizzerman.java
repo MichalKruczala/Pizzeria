@@ -46,7 +46,7 @@ public class Pizzerman {
                         assignedToTable = false;
                         queue = GroupFileManager.readGroupsFromFile();
                         for (Group queueGroup : queue) {
-                            removeGroupsAndTheirThreadsAfterCertainTime(tablesSortedByCapacity.get(), 9);  // average time group sit by table
+                            removeGroupsAndTheirThreadsAfterCertainTime(tablesSortedByCapacity.get(), 0);  // average time group sit by table
                             if (tryAssignGroupToTable(queueGroup, tablesSortedByCapacity.get())) {
                                 fileManager.writeTablesToFile(tablesSortedByCapacity.get());
                                 queue.remove(queueGroup);
@@ -57,11 +57,7 @@ public class Pizzerman {
                                 GUI.printMessage("            Quantity of groups in queue: " + queue.size());
                                 queue.stream().map(Group::toStringWithoutThreads).forEach(System.out::println);
                                 GUI.printMessage("----------------------------------------------------------------------");
-                                try {
-                                    Thread.sleep(4 * 1000);      // serving time
-                                } catch (InterruptedException e) {
-                                    throw new RuntimeException(e);
-                                }
+                                // Thread.sleep(4 * 1000);      // serving time
                                 queue = GroupFileManager.readGroupsFromFile();
                                 assignedToTable = true;
                                 break;
@@ -134,6 +130,7 @@ public class Pizzerman {
                     Thread.currentThread().interrupt();
                 }
             });
+            t.setDaemon(true);
             t.start();
             threadIds.add(t.getId());
             registerThread(t);

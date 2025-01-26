@@ -42,6 +42,7 @@ System składa się z kilku klas:
     - Centralizuje wyświetlanie komunikatów w konsoli, ułatwiając zarządzanie wyjściem.
 
 ---
+![img.png](img.png)
 
 ## 3. Co udało się zrobić
 
@@ -54,6 +55,7 @@ System składa się z kilku klas:
 - Zaimplementowano zapisywanie stanu stolików do pliku oraz odczyt stanu po restarcie aplikacji.
 
 ---
+
 
 ## 4. Problemy napotkane podczas realizacji
 
