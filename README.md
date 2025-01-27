@@ -1,115 +1,152 @@
-# Raport z projektu: Symulacja zarządzania pizzerią
+# Raport Projektu – System Wieloprocesowy i Wielowątkowy
 
 ## 1. Założenia projektowe
-Celem projektu było stworzenie symulacji zarządzania pizzerią z wykorzystaniem wielowątkowości w Javie.
-Główne elementy systemu to:
 
-- **Goście**: Przybywają do pizzerii w losowych grupach o rozmiarach od 1 do 3 osób, w określonych interwałach czasowych.
-- **Pizzerman**: Przydziela grupy do odpowiednich stolików, przestrzegając zasad:
-    - Grupy o różnych rozmiarach nie mogą dzielić tego samego stolika.
-    - Grupy mogą zajmować stolik tylko wtedy, gdy jest wystarczająca liczba wolnych miejsc.
-- **Strażak**: Po określonym czasie symuluje sytuację alarmu pożarowego, ewakuuje klientów i zamyka pizzerię.
-- **Stoliki**: Różnią się pojemnością (1-4 osoby), a ich zajętość jest dynamicznie zarządzana w trakcie symulacji.
-- **Kolejka**: Obsługuje grupy oczekujące na przydzielenie stolika.
+Projekt stanowi przykład **niescentralizowanego** systemu, w którym kilka procesów współdziała przy pomocy gniazd (socketów). Zamiast jednej aplikacji, która zarządza wszystkimi działaniami, każdy proces (np. `Guests`, `Pizzerman`, `FireFighter`, `PizzeriaServer`) jest uruchamiany osobno, a komunikacja między nimi odbywa się asynchronicznie, po sieci (lub lokalnie na komputerze) przy użyciu protokołu TCP.
 
-Projekt został zrealizowany zgodnie z opisem tematu, wykorzystując wymagane konstrukcje systemowe i mechanizmy synchronizacji.
-
----
+**Cele projektu** obejmują:
+- Implementację prostego serwera nasłuchującego sygnałów alarmowych.
+- Uruchamianie kilku procesów-klientów (`Guests`, `Pizzerman`, `FireFighter`.
+- Komunikację między procesami z użyciem gniazd.
+- Obsługę stanu awaryjnego (pożaru), gdzie proces `FireFighter` wyzwala alarm, a serwer powiadamia pozostałe procesy o konieczności ewakuacji.
 
 ## 2. Ogólny opis kodu
 
-System składa się z kilku klas:
+- **PizzeriaServer** – tworzy gniazdo serwera (socket), nasłuchuje na określonym porcie i uruchamia wątki (`ClientHandler`) dla każdego nowego połączenia. Odbiera komunikaty, takie jak „fire”.
+- **Guests** – symuluje przychodzących gości ustawiaqjących sie w kolejce przed lokalem. Łączy się z serwerem, odbiera komunikat „evacuation” i kończy pracę po otrzymaniu sygnału pożaru lub po zamknięciu gniazda przez serwer.
+- **Pizzerman** – symuluje pracę pizzermana, tworzy wątki obsługujące gości (np. `runNewThreadForEachGuest`), zarządza zasobami stołów i kolejkami. Reaguje na sygnał „evacuation”.
+- **FireFighter** – wysyła sygnał „fire”, który serwer rozpoznaje i ustawia stan awaryjny.
 
-1. **app.Main**:
-    - Odpowiada za inicjalizację pizzerii, stolików, kolejki i wątków (gości, pizzermana, strażaka).
-    - Zarządza współdzielonymi zasobami za pomocą mechanizmów wielowątkowości, takich jak `BlockingQueue` i `AtomicBoolean`.
+**Tworzenie procesów w Javie** nie jest tak proste jak w C/C++, gdzie mamy wbudowane `fork()`, `exec()`, `wait()` itp. W naszym projekcie oddzielne procesy uruchamiane są jako osobne aplikacje (każda ma metodę `main`). Procesy komunikują się przez sieć z użyciem `socket()`, `accept()`, `connect()`, `readLine()`, `write()` zamiast „typowych” wywołań systemowych `fork()` czy `exec()`.
 
-2. **Group**:
-    - Reprezentuje grupę gości, przechowując rozmiar grupy oraz czas przybycia.
-    - Zawiera metody do generowania losowych rozmiarów grup oraz porównywania ich wielkości.
+**Komunikacja między procesami** w tym projekcie opiera się na gniazdach:
 
-3. **Table**:
-    - Reprezentuje stolik w pizzerii, przechowując informacje o jego pojemności, zajętości i aktualnie przypisanych grupach.
+- Serwer `PizzeriaServer` nasłuchuje na porcie `9876`.
+- Procesy klienckie (`Guests`, `Pizzerman`, `FireFighter`) łączą się z adresem `localhost:9876`.
+- Proces `FireFighter` wysyła sygnał „fire”, serwer rozpoznaje go i wysyła do wszystkich aktualnie połączonych klientów komunikat „evacuation”.
+- Pozostałe procesy `Guests`, `Pizzerman` po otrzymaniu „evacuation” zakańczają swoje pętle i się wyłączają.
 
-4. **Pizzeria**:
-    - Zarządza logiką usuwania grup, które spędziły więcej czasu przy stoliku, niż jest to dozwolone.
+## 3. Wymagane przypadki użycia
 
-5. **Managers.FileManager**:
-    - Obsługuje zapis i odczyt stanu stolików do/z pliku.
-    - Synchronizuje dostęp do pliku za pomocą semaforów.
+1. **Standardowa praca**:
+    - `Guests` i `Pizzerman` łączą się z serwerem wykonując swoją pracę, nasłuchując sygnału.
+2. **Sygnał awaryjny (pożar)**:
+    - `FireFighter` wysyła wiadomość „fire”. Serwer ustawia stan awaryjny i odsyła „evacuation” do klientów, po czym kończy działanie. Klienci także się wyłączają.
 
-6. **gui.GUI**:
-    - Centralizuje wyświetlanie komunikatów w konsoli, ułatwiając zarządzanie wyjściem.
+Wprowadzane dane (np. rozmiary stołów, liczba gości) mogą być kontrolowane w kodzie. Jeśli wartości są błędne, wyświetlamy komunikaty ostrzegawcze (w Javie zamiast `perror()` używamy typowo wyjątków i `System.err.println()`).
 
----
-![img.png](img.png)
-![img_1.png](img_1.png)
+## 4. Obsługa błędów i uprawnień
 
-## 3. Co udało się zrobić
+- W Javie zamiast `perror()` i zmiennej `errno` stosuje się konstrukcje wyjątków `try/catch`.
+- Byłoby możliwe użycie `FilePermission` czy `SocketPermission` – jednakże w typowej aplikacji uruchamianej w trybie zwykłego użytkownika minimalne prawa są domyślnie zapewnione przez system.
+- Wszelkie pliki tymczasowe (np. `shared_memory.txt`) są czyszczone i zwalniane po zakończeniu działania aplikacji (metoda `clearFile()`).
 
-- Zaimplementowano wszystkie wymagane funkcjonalności:
-    - Obsługę gości, pizzermana i strażaka w osobnych wątkach.
-    - Synchronizację kolejki gości za pomocą `BlockingQueue`.
-    - Obsługę stolików i przestrzeganie zasad przydzielania grup.
-    - Mechanizm ewakuacji i resetowania stanu pizzerii w przypadku alarmu pożarowego.
-- Wykorzystano mechanizmy synchronizacji (`Semaphore`, `BlockingQueue`, `AtomicBoolean`).
-- Zaimplementowano zapisywanie stanu stolików do pliku oraz odczyt stanu po restarcie aplikacji.
+## 5. Z czym były problemy i co się udało
 
----
+- **Problemy**:
+    - Konieczność synchronizowania wątków w `Pizzerman` (np. przerwanie wątków gości) tak, aby proces rzeczywiście kończył się, gdy nadchodzi sygnał ewakuacji.
+    - Kończenie wszystkich wątków w procesach by te mogły zakończyć swoje działanie
+    - kończenie życia obiektów gości opuszczających pizzerię po zadanym czasie i kończenie ich wątków.
+- **Udało się**:
+    - Rozwiązać komunikację przez `socket()`, `bind()`, `accept()`, `connect()` w Javie.
+    - Zaimplementować sytuację alarmową: „fire” → „evacuation”.
+    - Zaimplementować wielowątkowość (dla gości) i prostą synchronizację kolejki (blokady w pliku i wątkach).
+    - Proces, w którym dane tekstowe (np. linie w pliku) są przekształcane w obiekty w pamięci (Group, Table, itp.), przypomina mapowanie relacji (np. z tabel w bazie danych) na obiekty w aplikacji.
+    - Pliki współdzielone działa jako centralne miejsce przechowywania stanu.
 
+## 6. Dodatkowe elementy i testy
 
-## 4. Problemy napotkane podczas realizacji
+- **Element specjalny**: wykorzystanie pliku `shared_memory.txt` (przez `FileLock`) do współdzielenia kolejek pomiędzy różnymi procesami (podejście zbliżone do pamięci dzielonej, ale w Javie).
 
-- **Synchronizacja dostępu do pliku**: Początkowe błędy w obsłudze wielowątkowego zapisu i odczytu plików zostały rozwiązane za pomocą semaforów.
-- **Obsługa wyjątków w wątkach**: Konieczne było dokładne zarządzanie przerwaniem wątków i obsługą wyjątków `InterruptedException`.
-- **Testowanie scenariusza alarmu pożarowego**: Trudności z symulacją dynamicznego zachowania wątków w momencie ustawienia flagi `isFireAlarmTriggered`.
+- **Testy**:
+- Manualne uruchamianie serwera, gości, pizzermana i strażaka w różnej kolejności. Najpierw jednak musi zostać uruchomiony proces `PizzeriaServer`
+- Sprawdzanie, czy w każdym przypadku alarm kończy wszystkie procesy.
+- Process `Guests`  oddaje grup do kolejki o zadanej wartości
+- Proess `Guests` nie dodaje grup do kolejki gdy ta jest już pełna.
+- Procesy `Pizzerman`,`Guests` dodają i wyciągają grupy z kolejki współdzielając plik nad którym synchronizację sprawuje `FileLock`
+- Proces `Pizzerman` nie dodaje grupy do stolika gdy jej liczebnośc jest większa niż capacity stolika
+- Proces `Pizzerman` nie dodaje grupy do stolika gdy siedza przy nim grupy o innej liczebnosći
+- Proces `Pizzerman` dodaje grupę do stolika usuwając ją z kolejki otwierając drogę procesowi`Guests` dania kolejnej grupy do kolejki
+- Proces `Pizzerman` sprawia że grupy opuszczją salę po zadanym czasie, ustawialnym w kodzie, również kończy wątki Gości
 
----
-
-## 5. Dodane elementy specjalne
-
-- Wprowadzenie klasy `gui.GUI` w celu centralizacji wyświetlania komunikatów.
-- Mechanizm dynamicznego przydzielania czasu pojawiania się grup (`Thread.sleep` z losowymi interwałami).
-- Możliwość dynamicznego ustawiania maksymalnego czasu, po którym grupa jest usuwana ze stolika.
-
----
-
-## 6. Problemy z testami
-
-- W scenariuszach o dużej liczbie gości występowały sytuacje, w których kolejka `BlockingQueue` była pełna, co powodowało blokowanie wątku `guestsThread`. Problem ten został rozwiązany przez kontrolowanie flagi alarmu przed dodaniem nowej grupy do kolejki.
-- Testowanie ewakuacji wymagało dodania komunikatów diagnostycznych w wątku strażaka.
-
----
 
 ## 7. Linki do istotnych fragmentów kodu
 
+Poniżej kilka przykładów linków do repozytorium GitHub, prezentujących najważniejsze funkcje systemowe w projekcie:
+- **Obsługa gniazd (socketów)**:
+    - [`PizzeriaServer.main`](https://github.com/TwojeRepozytorium/PizzeriaServer.java#L20)  
+      Uruchamia serwer nasłuchujący na porcie 9876. Akceptuje połączenia przychodzące, tworząc wątki do obsługi klientów.
+    - [`Guests.main`](https://github.com/TwojeRepozytorium/Guests.java#L25)  
+      Proces pisiadający dwa wątki, jeden dodaje grupy gości do kolejki ,drugi łączy się z serwerem jako klient i odbiera komunikaty, takie jak „evacuation”.
+
 - **Tworzenie i obsługa plików**:
-    - [Managers.FileManager: `writeTablesToFile`](https://github.com/TwojeRepozytorium/FileManager.java#L45)
-    - [Managers.FileManager: `readTablesFromFile`](https://github.com/TwojeRepozytorium/FileManager.java#L25)
+    - [`GroupFileManager.writeQueueToFile`](https://github.com/TwojeRepozytorium/GroupFileManager.java#L25)  
+      Zapisuje stan kolejki grup do pliku `shared_memory.txt`, używając blokady pliku (`FileLock`). Funkcja czyści zawartość pliku i zapisuje każdą grupę w formacie tekstowym. Synchronizacja zapisu pozwala na współdzielenie danych przez wiele procesów.
+    - [`GroupFileManager.readGroupsFromFile`](https://github.com/TwojeRepozytorium/GroupFileManager.java#L45)  
+      Odczytuje dane grup z pliku `shared_memory.txt`, tworząc z nich kolejkę `BlockingQueue<Group>`. Blokada współdzielona (`FileLock`) zapewnia bezpieczeństwo danych podczas odczytu.
 
 - **Tworzenie procesów i wątków**:
-    - [app.Main: wątki gości, pizzermana, strażaka](https://github.com/TwojeRepozytorium/Main.java#L15)
+    - [`Pizzerman.runNewThreadForEachGuest`](https://github.com/TwojeRepozytorium/Pizzerman.java#L105)  
+      Tworzy nowe wątki dla każdego gościa w grupie, które działają do momentu przerwania (`Thread.interrupt()`). Wątki reprezentują obsługę klientów przez pizzermana.
+    - [`PizzeriaServer.ClientHandler.run`](https://github.com/TwojeRepozytorium/PizzeriaServer.java#L60)  
+      Obsługuje pojedyncze połączenie przychodzące, nasłuchując komunikaty od klienta. Odpowiada za reakcje na „fire” i „evacuation”.
 
 - **Synchronizacja wątków**:
-    - [Managers.FileManager: użycie `Semaphore`](https://github.com/TwojeRepozytorium/FileManager.java#L10)
-    - [app.Main: użycie `AtomicBoolean`](https://github.com/TwojeRepozytorium/Main.java#L13)
+    - [`FileManager.createTablesToFile`](https://github.com/TwojeRepozytorium/FileManager.java#L30)  
+      Tworzy plik zawierający dane o dostępnych stolikach w pizzerii. Używa mechanizmów plikowych w celu zachowania integralności danych.
+    - [`GroupFileManager.clearFile`](https://github.com/TwojeRepozytorium/GroupFileManager.java#L65)  
+      Czyści zawartość pliku `shared_memory.txt`, blokując go podczas operacji za pomocą `FileLock`.
 
 - **Obsługa sygnałów i stanu awaryjnego**:
-    - [Firefighter: obsługa alarmu pożarowego](https://github.com/TwojeRepozytorium/Main.java#L67)
+    - [`FireFighter.main`](https://github.com/TwojeRepozytorium/FireFighter.java#L20)  
+      Proces symulujący strażaka, który łączy się z serwerem i wysyła sygnał „fire”. Sygnał uruchamia globalny stan awaryjny, na który reagują inne procesy.
+    - [`Guests.main`](https://github.com/TwojeRepozytorium/Guests.java#L15)  
+      Goście nasłuchują sygnałów z serwera, takich jak „evacuation”. Po otrzymaniu sygnału zamykają swoje połączenie i kończą pracę.
+
 
 ---
 
-## 8. Ocena zgodności z wymaganiami
+*Linki w powyższych przykładach są hipotetyczne – zastąp je rzeczywistymi linkami do repozytorium GitHub.*
 
-- **Zgodność z opisem tematu**: 10%  
-  Wszystkie wymagane funkcjonalności zostały zaimplementowane.
+---
 
-- **Poprawność funkcjonalna**: 20%  
-  Przeprowadzono testy w scenariuszach normalnego działania i alarmu pożarowego. System działa poprawnie, bez zakleszczeń i błędów synchronizacji.
+## 8. Opis ważniejszych funkcji
 
-- **Wykorzystanie konstrukcji systemowych**: 20%  
-  W projekcie wykorzystano następujące konstrukcje:
-    1. Obsługa plików (`Managers.FileManager`).
-    2. Tworzenie i obsługa wątków (`Thread`, `Runnable`).
-    3. Synchronizacja wątków (`Semaphore`, `BlockingQueue`, `AtomicBoolean`).
-    4. Obsługa sygnałów i sytuacji awaryjnych (`isFireAlarmTriggered`).
+Przykłady krótkich opisów (pomijamy gettery i settery):
+
+1. **`PizzeriaServer.main(String[] args)`**  
+   Uruchamia gniazdo serwera (`ServerSocket`) na porcie 9876. W pętli `while (!isFire) { ... }` akceptuje nowych klientów. W razie sygnału „fire” wyłącza się, wysyłając „evacuation”.
+
+2. **`PizzeriaServer.ClientHandler.run()`**  
+   Obsługuje pojedyncze połączenie klienckie: czyta linie w pętli i reaguje na komunikaty („fire” → ustawia isFire = true; w odpowiedzi wysyła „evacuation”).
+
+3. **`Guests.main(String[] args)`**  
+   Łączy się z serwerem, co pewien czas wysyła dane (np. zamówienia). Nasłuchuje komunikatu „evacuation” lub rozłączenia, co kończy pętlę główną.
+
+4. **`Pizzerman.runNewThreadForEachGuest(Group group)`**  
+   Tworzy nowe wątki (po jednym na gościa), które działają w pętli i czekają do momentu przerwania (`Thread.interrupt()`).
+
+5. **`FireFighter.main(String[] args)`**  
+   Jednorazowy proces: łączy się z serwerem i wysyła komunikat „fire”. Następnie kończy działanie.
+
+6. **`GroupFileManager.writeQueueToFile(BlockingQueue<Group> queue)`**  
+   Otwiera plik `shared_memory.txt` w trybie rw, blokuje go (`FileLock`), czyści zawartość i zapisuje aktualny stan kolejki. Pozwala to innym procesom odczytać kolejkę ze wspólnego pliku.
+
+7. **`GroupFileManager.readGroupsFromFile()`**  
+   Otwiera ten sam plik w trybie „read-only” i przy użyciu blokady współdzielonej (`lock(0, Long.MAX_VALUE, true)`) odczytuje wszystkie linie, tworząc obiekty `Group`.
+
+8. **`FileManager.createTablesToFile(int[] quantityOfTables)`**  
+   Tworzy plik z informacjami o stolikach (ich liczba, pojemność). Używa `open()`, `write()`, `close()` (zastąpione w Javie przez `FileWriter`/`RandomAccessFile`).
+
+---
+
+## 9. Zakończenie i wnioski
+
+- **Usuwanie struktur**: Po zamknięciu aplikacji pliki tymczasowe są usuwane (lub czyszczone metodą `clearFile()`), a wątki i sockety – zamykane.
+- **Potencjalne usprawnienia**:
+    - Dodać weryfikację danych wejściowych (np. maksymalna liczba procesów).
+    - Wykorzystać systemowe wywołania w stylu `fork()`, `exec()` (w C/C++), by w pełni spełnić wymóg tworzenia procesów z poziomu kodu. W Javie jednak w większości procesy uruchamiamy osobno.
+    - Rozbudować obsługę błędów i raportowanie wyjątków (np. `try-catch` z wypisaniem `System.err.println(e.getMessage())`).
+
+**Całość** projektu spełnia główny cel: prezentację wieloprocesowej, wielowątkowej aplikacji, w której sygnał pożaru może natychmiast przerwać pracę wszystkich procesów i ich wątków.
+

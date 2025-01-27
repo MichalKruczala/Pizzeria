@@ -16,6 +16,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
@@ -25,7 +26,7 @@ public class Pizzerman {
     public static void main(String[] args) {
 
         FileManager fileManager = new FileManager();
-        int[] quantityOfTables = {0, 0, 0, 1};
+        int[] quantityOfTables = {4, 3, 2, 6};
         fileManager.createTablesToFile(quantityOfTables);
 
         AtomicReference<List<Table>> tablesSortedByCapacity = new AtomicReference<>(
@@ -36,17 +37,17 @@ public class Pizzerman {
         );
         try (Socket socket = new Socket("localhost", 9876);
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
-            boolean[] isFireAlarmTriggered = {false};
+            AtomicBoolean isFireAlarmTriggered = new AtomicBoolean(false);
 
-            Thread pizzerman = new Thread(() -> {
+            Thread pizzermanThread = new Thread(() -> {
                 BlockingQueue<Group> queue;
-                while (!isFireAlarmTriggered[0]) {
+                while (!isFireAlarmTriggered.get()) {
                     boolean assignedToTable;
                     do {
                         assignedToTable = false;
                         queue = GroupFileManager.readGroupsFromFile();
                         for (Group queueGroup : queue) {
-                            removeGroupsAndTheirThreadsAfterCertainTime(tablesSortedByCapacity.get(), 0);  // average time group sit by table
+                            removeGroupsAndTheirThreadsAfterCertainTime(tablesSortedByCapacity.get(), 8);  // average time group sit by table
                             if (tryAssignGroupToTable(queueGroup, tablesSortedByCapacity.get())) {
                                 fileManager.writeTablesToFile(tablesSortedByCapacity.get());
                                 queue.remove(queueGroup);
@@ -57,13 +58,17 @@ public class Pizzerman {
                                 GUI.printMessage("            Quantity of groups in queue: " + queue.size());
                                 queue.stream().map(Group::toStringWithoutThreads).forEach(System.out::println);
                                 GUI.printMessage("----------------------------------------------------------------------");
-                                // Thread.sleep(4 * 1000);      // serving time
+                                try {
+                                    Thread.sleep(2 * 1000);      // serving time
+                                } catch (InterruptedException e) {
+                                    throw new RuntimeException(e);
+                                }
                                 queue = GroupFileManager.readGroupsFromFile();
                                 assignedToTable = true;
                                 break;
                             }
                         }
-                    } while (assignedToTable && !isFireAlarmTriggered[0]);
+                    } while (assignedToTable && !isFireAlarmTriggered.get());
                     removeGroupsAndTheirThreadsAfterCertainTime(tablesSortedByCapacity.get(), 0);
                     threadMap.clear();
                 }
@@ -75,19 +80,19 @@ public class Pizzerman {
                     String response;
                     while ((response = in.readLine()) != null) {
                         if ("evacuation".equals(response)) {
-                            isFireAlarmTriggered[0] = true;
+                            isFireAlarmTriggered.set(true);
                             break;
                         }
                     }
                     System.out.println("Server closed the connection. Pizzerman and Guests are leaving...");
-                    isFireAlarmTriggered[0] = true;
+                    isFireAlarmTriggered.set(true);
                 } catch (IOException e) {
                     System.out.println("Error in server listener thread: " + e.getMessage());
                 }
             });
             serverListenerThread.start();
-            pizzerman.start();
-            pizzerman.join();
+            pizzermanThread.start();
+            pizzermanThread.join();
             serverListenerThread.join();
             System.out.println("Pizzerman process exiting with code 0.");
         } catch (IOException | InterruptedException e) {

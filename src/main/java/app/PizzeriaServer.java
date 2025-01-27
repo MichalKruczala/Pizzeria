@@ -48,6 +48,7 @@ public class PizzeriaServer {
         }
         System.exit(0);
     }
+
     public static void triggerFire() {
         isFire = true;
         try {
@@ -58,9 +59,13 @@ public class PizzeriaServer {
             e.printStackTrace();
         }
     }
+
     public static boolean isFireTriggered() {
         return isFire;
     }
+
+
+
     static class ClientHandler implements Runnable {
         private final Socket clientSocket;
 
@@ -85,10 +90,8 @@ public class PizzeriaServer {
                         out.println("order received");
                     }
                 }
-
             } catch (SocketException e) {
-                // Connection reset / gniazdo zerwane itp.
-                System.out.println("SocketException (połączenie przerwane): " + e.getMessage());
+                System.out.println("SocketException (Lost connection): " + e.getMessage());
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {

@@ -102,7 +102,6 @@ public class FileManager {
                 ))
                 .collect(Collectors.joining(", ")) + "]";
     }
-
     public Table parseTable(String line) {
         line = line.trim();
 
