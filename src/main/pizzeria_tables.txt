@@ -1,0 +1,2 @@
+Table{initialCapacity=2, capacity=0, isOccupied=true, groups=[model.Group{size=2, serviceTime=16:13:46, userThreads=[310, 311]}]}
+Table{initialCapacity=4, capacity=2, isOccupied=true, groups=[model.Group{size=2, serviceTime=16:13:48, userThreads=[312, 313]}]}

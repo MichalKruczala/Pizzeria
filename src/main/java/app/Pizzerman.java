@@ -26,7 +26,7 @@ public class Pizzerman {
     public static void main(String[] args) {
 
         FileManager fileManager = new FileManager();
-        int[] quantityOfTables = {4, 3, 2, 6};
+        int[] quantityOfTables = {3, 2, 3, 3};
         fileManager.createTablesToFile(quantityOfTables);
 
         AtomicReference<List<Table>> tablesSortedByCapacity = new AtomicReference<>(
@@ -47,7 +47,7 @@ public class Pizzerman {
                         assignedToTable = false;
                         queue = GroupFileManager.readGroupsFromFile();
                         for (Group queueGroup : queue) {
-                            removeGroupsAndTheirThreadsAfterCertainTime(tablesSortedByCapacity.get(), 8);  // average time group sit by table
+                            removeGroupsAndTheirThreadsAfterCertainTime(tablesSortedByCapacity.get(), 2000);  // average time group sit by table
                             if (tryAssignGroupToTable(queueGroup, tablesSortedByCapacity.get())) {
                                 fileManager.writeTablesToFile(tablesSortedByCapacity.get());
                                 queue.remove(queueGroup);
@@ -109,9 +109,7 @@ public class Pizzerman {
                 group.setServiceTime(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm:ss")));
                 runNewThreadForEachGuest(group);
                 return true;
-            } else if (table.isOccupied() &&
-                    Group.compareGroupSizes(table.getGroups(), group.getSize()) &&
-                    group.getSize() <= table.getCapacity()) {
+            } else if (table.isOccupied() && Group.compareGroupSizes(table.getGroups(), group.getSize()) && group.getSize() <= table.getCapacity()) {
                 table.addGroupToTable(group);
                 table.setOccupied(true);
                 table.setCapacity(table.getCapacity() - group.getSize());
@@ -137,7 +135,9 @@ public class Pizzerman {
             });
             t.setDaemon(true);
             t.start();
-            threadIds.add(t.getId());
+            threadIds.add(t.threadId());
+
+
             registerThread(t);
         }
         group.setUserThreadIds(threadIds);
@@ -176,7 +176,8 @@ public class Pizzerman {
     }
 
     public static void registerThread(Thread t) {
-        threadMap.put(t.getId(), t);
+        threadMap.put(t.threadId(), t);
+
     }
 
     public static Thread getThreadById(long tid) {

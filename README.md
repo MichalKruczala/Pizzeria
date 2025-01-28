@@ -1,5 +1,56 @@
 # Raport Projektu – System Wieloprocesowy i Wielowątkowy
 
+
+
+**Instrukcja uruchamiania aplikacji na Linuxie**
+
+Przejdź do katalogu src/main gdzie znajdują się wszystkie pliki projektu (java/app i java/model).
+
+--------
+    cd /ścieżka/do/projektu/src/main
+
+
+
+**Utwórz katalog out**
+
+
+     mkdir -p out
+**Skompiluj wszystkie klasy**
+
+    javac -d out $(find java -name "*.java")
+
+**Utwósrz skrypt jako run_app.sh w katalogu src/main:**
+
+
+    nano run.sh
+
+**Zawrzyj w nim**
+
+    #!/bin/bash
+
+    gnome-terminal -- bash -c "cd $(pwd) && java -cp out app.PizzeriaServer; exec bash"
+    sleep 2        # Czekaj, aż serwer się uruchomi
+
+    gnome-terminal -- bash -c "cd $(pwd) && java -cp out app.Guests; exec bash"
+
+    gnome-terminal -- bash -c "cd $(pwd) && java -cp out app.Pizzerman; exec bash"
+
+    gnome-terminal -- bash -c "cd $(pwd) && java -cp out app.FireFighter; exec bash"
+
+
+**Nadaj uprawnienia do wykonania skryptu**
+
+    chmod +x run.sh
+
+**uruchom skrypt**
+
+    ./run.sh
+
+    
+# Po konsultacji w P.Wojtasem
+Projekt spełnia główny cel: prezentację wieloprocesowej, wielowątkowej aplikacji, w której sygnał pożaru może natychmiast przerwać pracę wszystkich procesów, lecz jendak na trudność w javie tworzenia procesów w porównaniu do np C++ gdzie mamy funkcje systemowe fork() i exec(), mamy tylko 4 procesy a większość tworzenia wątków odbywa się w Procesie **Pizzerman**
+
+
 ## 1. Założenia projektowe
 
 Projekt stanowi przykład **niescentralizowanego** systemu, w którym kilka procesów współdziała przy pomocy gniazd (socketów). Zamiast jednej aplikacji, która zarządza wszystkimi działaniami, każdy proces(np. `Guests`, `Pizzerman`, `FireFighter`, `PizzeriaServer`) jest uruchamiany osobno, a komunikacja między nimi odbywa się asynchronicznie, po sieci (lub lokalnie na komputerze) przy użyciu protokołu TCP.
@@ -57,18 +108,70 @@ Projekt stanowi przykład **niescentralizowanego** systemu, w którym kilka proc
 
 - **Element specjalny**: wykorzystanie pliku `shared_memory.txt` (przez `FileLock`) do współdzielenia kolejek pomiędzy różnymi procesami (podejście zbliżone do pamięci dzielonej, ale w Javie).
 
-- **Testy**:
-- Manualne uruchamianie serwera, gości, pizzermana i strażaka w różnej kolejności. Najpierw jednak musi zostać uruchomiony proces `PizzeriaServer`
-- Sprawdzanie, czy w każdym przypadku alarm kończy wszystkie procesy.
-- Process `Guests`  oddaje grup do kolejki o zadanej wartości
-- Proess `Guests` nie dodaje grup do kolejki gdy ta jest już pełna.
-- Procesy `Pizzerman`,`Guests` dodają i wyciągają grupy z kolejki współdzielając plik nad którym synchronizację sprawuje `FileLock`
-- Proces `Pizzerman` nie dodaje grupy do stolika gdy jej liczebnośc jest większa niż capacity stolika
-- Proces `Pizzerman` nie dodaje grupy do stolika gdy siedza przy nim grupy o innej liczebnosći
-- Proces `Pizzerman` dodaje grupę do stolika usuwając ją z kolejki otwierając drogę procesowi`Guests` dania kolejnej grupy do kolejki
-- Proces `Pizzerman` sprawia że grupy opuszczją salę po zadanym czasie, ustawialnym w kodzie, również kończy wątki Gości
+
+-    **Testy**:
+-------------
+
+- **tworzenie stolików liczebności stolików wprowadzone dane**  
+![img_9.png](img_9.png)
+
+**rezultat** :
 
 
+     Table{initialCapacity=2, capacity=2, isOccupied=false, groups=[]}
+  
+     Table{initialCapacity=4, capacity=4, isOccupied=false, groups=[]}
+
+---------------------------------------------------------------------------------
+- **dodawanie grup gości (max 3 osoby) do kolejki czekającej przed lokalem**
+
+![img_1.png](img_1.png)
+- **rezultat** :
+
+
+     Group{size=3, serviceTime=19:56:54}
+  
+     Group{size=2, serviceTime=19:56:55}
+  
+     Group{size=3, serviceTime=19:56:58}
+  
+     Group{size=2, serviceTime=19:56:59}
+  
+     Group{size=1, serviceTime=19:57:02}
+  
+     Group{size=2, serviceTime=19:57:03}
+
+----------
+- **Gdy kolejka jest pełna nie dodają się  grupy gości do kolejki czekającej przed lokalem(max 6 grup)**
+
+![img_8.png](img_8.png)
+
+
+
+
+- rezultat
+
+![img_7.png](img_7.png)
+
+-----------------------------------
+- **Kończenie wszystkich procesów po wysłaniu sygnału `fire` przez strażaka**
+
+
+- wysłanie sygnału
+
+ ![img_3.png](img_3.png)
+- rezultat
+
+![img_4.png](img_4.png)
+
+![img_5.png](img_5.png)
+
+![img_6.png](img_6.png)
+
+
+
+
+-------------------------------
 ## 7. Linki do istotnych fragmentów kodu
 
 Poniżej kilka przykładów linków do repozytorium GitHub, prezentujących najważniejsze funkcje systemowe w projekcie:

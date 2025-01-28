@@ -41,7 +41,6 @@ public class Guests {
                     }
                 });
 
-
                 Thread serverListenerThread = new Thread(() -> {
                     try {
                         String response;
